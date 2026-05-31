@@ -3,9 +3,9 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 
-# ====================================
+# ==================================================
 # PAGE CONFIG
-# ====================================
+# ==================================================
 
 st.set_page_config(
     page_title="Music Recommendation System",
@@ -13,45 +13,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# ====================================
-# CUSTOM CSS
-# ====================================
-
-st.markdown("""
-<style>
-
-.main {
-    background-color: #0e1117;
-}
-
-.song-card {
-    background-color: #1c1f26;
-    padding: 20px;
-    border-radius: 15px;
-    margin-bottom: 15px;
-    border-left: 5px solid #1DB954;
-}
-
-.song-title {
-    font-size: 22px;
-    font-weight: bold;
-}
-
-.artist {
-    color: #b3b3b3;
-}
-
-.similarity {
-    color: #1DB954;
-    font-weight: bold;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ====================================
+# ==================================================
 # LOAD DATA
-# ====================================
+# ==================================================
 
 @st.cache_data
 def load_data():
@@ -59,34 +23,32 @@ def load_data():
 
 df = load_data()
 
-# Create display names
-
 df["display_name"] = (
     df["name"].astype(str)
     + " - "
     + df["artists"].astype(str)
 )
 
-# ====================================
-# BUILD MODEL
-# ====================================
+# ==================================================
+# MODEL
+# ==================================================
+
+FEATURES = [
+    'danceability',
+    'energy',
+    'acousticness',
+    'instrumentalness',
+    'liveness',
+    'speechiness',
+    'valence',
+    'loudness',
+    'tempo'
+]
 
 @st.cache_resource
 def build_model():
 
-    features = [
-        'danceability',
-        'energy',
-        'acousticness',
-        'instrumentalness',
-        'liveness',
-        'speechiness',
-        'valence',
-        'loudness',
-        'tempo'
-    ]
-
-    X = df[features]
+    X = df[FEATURES]
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
@@ -103,9 +65,9 @@ def build_model():
 
 model, X_scaled = build_model()
 
-# ====================================
+# ==================================================
 # SIDEBAR
-# ====================================
+# ==================================================
 
 st.sidebar.title("📊 Dataset Information")
 
@@ -115,14 +77,14 @@ st.sidebar.metric(
 )
 
 st.sidebar.metric(
-    "Features",
-    "9"
+    "Features Used",
+    len(FEATURES)
 )
 
 st.sidebar.markdown("---")
 
 st.sidebar.write("""
-### Model
+### Machine Learning Model
 
 - K-Nearest Neighbors (KNN)
 - Cosine Similarity
@@ -141,124 +103,277 @@ st.sidebar.write("""
 - Tempo
 """)
 
-# ====================================
+# ==================================================
 # TITLE
-# ====================================
+# ==================================================
 
 st.title("🎵 Music Recommendation System")
 
-st.write(
-    "Find similar songs using Spotify audio features, "
-    "K-Nearest Neighbors (KNN), and Cosine Similarity."
-)
+st.write("""
+This application recommends songs based on Spotify
+audio features using K-Nearest Neighbors (KNN)
+and Cosine Similarity.
+""")
 
-st.markdown("---")
+# ==================================================
+# TABS
+# ==================================================
 
-# ====================================
-# SONG SEARCH
-# ====================================
+tab1, tab2, tab3 = st.tabs([
+    "🎵 Recommender",
+    "📊 Dataset & Methodology",
+    "👥 About Team"
+])
 
-search_query = st.text_input(
-    "🔍 Search Song",
-    placeholder="Type part of a song title..."
-)
+# ==================================================
+# TAB 1 - RECOMMENDER
+# ==================================================
 
-selected_song = None
+with tab1:
 
-if search_query:
+    st.subheader("Find Similar Songs")
 
-    matches = df[
-        df["name"].str.contains(
-            search_query,
-            case=False,
-            na=False
-        )
-    ]
+    search_query = st.text_input(
+        "🔍 Search Song",
+        placeholder="Type part of a song title..."
+    )
 
-    matches = matches.head(20)
+    selected_song = None
 
-    if len(matches) > 0:
+    if search_query:
 
-        selected_song = st.selectbox(
-            "Select a Song",
-            matches["display_name"]
-        )
+        matches = df[
+            df["name"].str.contains(
+                search_query,
+                case=False,
+                na=False
+            )
+        ]
 
-    else:
+        matches = matches.head(20)
 
-        st.warning("No matching songs found.")
+        if len(matches) > 0:
 
-# ====================================
-# RECOMMEND BUTTON
-# ====================================
-
-if st.button(
-    "🎧 Recommend Songs",
-    use_container_width=True
-):
-
-    if not selected_song:
-
-        st.warning(
-            "Please search for and select a song first."
-        )
-
-    else:
-
-        selected_row = df[
-            df["display_name"] == selected_song
-        ].iloc[0]
-
-        idx = selected_row.name
-
-        st.success(
-            f"Selected Song: "
-            f"{selected_row['name']} - "
-            f"{selected_row['artists']}"
-        )
-
-        distances, indices = model.kneighbors(
-            X_scaled[idx].reshape(1, -1),
-            n_neighbors=11
-        )
-
-        st.subheader("🎶 Recommended Songs")
-
-        for rank, (distance, song_idx) in enumerate(
-            zip(
-                distances[0][1:],
-                indices[0][1:]
-            ),
-            start=1
-        ):
-
-            similarity = (
-                (1 - distance) * 100
+            selected_song = st.selectbox(
+                "Select a Song",
+                matches["display_name"]
             )
 
-            st.markdown(
-                f"""
-                <div class="song-card">
+        else:
 
-                    <div class="song-title">
-                        #{rank} {df.iloc[song_idx]['name']}
-                    </div>
-
-                    <div class="artist">
-                        {df.iloc[song_idx]['artists']}
-                    </div>
-
-                    <div class="similarity">
-                        Similarity:
-                        {similarity:.2f}%
-                    </div>
-
-                </div>
-                """,
-                unsafe_allow_html=True
+            st.warning(
+                "No matching songs found."
             )
 
-            st.progress(
-                float(similarity / 100)
+    if st.button(
+        "🎧 Recommend Songs",
+        use_container_width=True
+    ):
+
+        if not selected_song:
+
+            st.warning(
+                "Please search and select a song first."
             )
 
+        else:
+
+            selected_row = df[
+                df["display_name"] == selected_song
+            ].iloc[0]
+
+            idx = selected_row.name
+
+            st.success(
+                f"Selected Song: "
+                f"{selected_row['name']} - "
+                f"{selected_row['artists']}"
+            )
+
+            distances, indices = model.kneighbors(
+                X_scaled[idx].reshape(1, -1),
+                n_neighbors=11
+            )
+
+            st.subheader("🎶 Recommended Songs")
+
+            for rank, (distance, song_idx) in enumerate(
+                zip(
+                    distances[0][1:],
+                    indices[0][1:]
+                ),
+                start=1
+            ):
+
+                similarity = (1 - distance) * 100
+
+                st.markdown(
+                    f"### #{rank} {df.iloc[song_idx]['name']}"
+                )
+
+                st.caption(
+                    f"{df.iloc[song_idx]['artists']}"
+                )
+
+                st.progress(
+                    float(similarity / 100)
+                )
+
+                st.write(
+                    f"Similarity: {similarity:.2f}%"
+                )
+
+                st.divider()
+
+# ==================================================
+# TAB 2 - DATASET & METHODOLOGY
+# ==================================================
+
+with tab2:
+
+    st.header("Dataset Overview")
+
+    st.write(f"""
+    This project uses a Spotify dataset containing
+    **{len(df):,} songs** and 19 attributes.
+    """)
+
+    st.subheader("Features Used")
+
+    st.markdown("""
+    - Danceability
+    - Energy
+    - Acousticness
+    - Instrumentalness
+    - Liveness
+    - Speechiness
+    - Valence
+    - Loudness
+    - Tempo
+    """)
+
+    st.subheader("Data Preprocessing")
+
+    st.write("""
+    The selected audio features are standardized
+    using StandardScaler before training.
+
+    Standardization ensures that features with
+    larger numerical ranges do not dominate
+    similarity calculations.
+    """)
+
+    st.subheader("Machine Learning Method")
+
+    st.write("""
+    The recommendation engine uses the
+    K-Nearest Neighbors (KNN) algorithm.
+
+    Each song is represented as a numerical vector
+    using Spotify audio features.
+
+    When a song is selected, cosine similarity
+    is used to identify the most similar songs
+    in the dataset.
+    """)
+
+    st.subheader("Cosine Similarity")
+
+    st.latex(
+        r"\frac{A \cdot B}{||A|| ||B||}"
+    )
+
+    st.write("""
+    Songs with similar audio profiles produce
+    higher cosine similarity scores and are
+    recommended to the user.
+    """)
+
+    st.subheader("Feature Statistics")
+
+    st.dataframe(
+        df[FEATURES].describe()
+    )
+
+    st.subheader("Dataset Sample")
+
+    st.dataframe(
+        df.head(10)
+    )
+
+# ==================================================
+# TAB 3 - ABOUT TEAM
+# ==================================================
+
+with tab3:
+
+    st.header("Project Team")
+
+    st.markdown("""
+    ### Member 1
+    **Name:** Willian Yehezkiel Alvin
+
+    **Responsibilities**
+    - Data preprocessing
+    - Feature engineering
+    - KNN implementation
+
+    ---
+
+    ### Member 2
+    **Name:** Vittorio Dinata
+
+    **Responsibilities**
+    - Streamlit development
+    - User interface design
+    - Application testing
+
+    ---
+
+    ### Member 3
+    **Name:** Gregorius Gilbert Susanto
+
+    **Responsibilities**
+    - Documentation
+    - Literature review
+    - Report writing
+
+    ---
+
+    ### Member 4
+    **Name:** Andrew Ong
+
+    **Responsibilities**
+    - Dataset analysis
+    - Evaluation and validation
+    - Presentation preparation
+    """)
+
+    st.subheader("Project Objective")
+
+    st.write("""
+    The purpose of this project is to develop a
+    content-based music recommendation system using
+    Spotify audio features.
+
+    The recommendation engine utilizes the
+    K-Nearest Neighbors (KNN) algorithm and
+    cosine similarity to identify songs with
+    similar musical characteristics.
+
+    By analyzing audio features such as
+    danceability, energy, valence, acousticness,
+    and tempo, the system generates personalized
+    song recommendations for users.
+    """)
+
+    st.subheader("Technology Stack")
+
+    st.markdown("""
+    - Python
+    - Pandas
+    - Scikit-Learn
+    - Streamlit
+    - K-Nearest Neighbors (KNN)
+    - Cosine Similarity
+    """)
