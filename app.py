@@ -3,9 +3,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 
-# ==================================================
-# PAGE CONFIG
-# ==================================================
+
 
 st.set_page_config(
     page_title="Music Recommendation System",
@@ -13,9 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==================================================
-# LOAD DATA
-# ==================================================
+
 
 @st.cache_data
 def load_data():
@@ -29,9 +25,7 @@ df["display_name"] = (
     + df["artists"].astype(str)
 )
 
-# ==================================================
-# MODEL
-# ==================================================
+
 
 FEATURES = [
     'danceability',
@@ -65,9 +59,7 @@ def build_model():
 
 model, X_scaled = build_model()
 
-# ==================================================
-# SIDEBAR
-# ==================================================
+
 
 st.sidebar.title("📊 Dataset Information")
 
@@ -103,9 +95,6 @@ st.sidebar.write("""
 - Tempo
 """)
 
-# ==================================================
-# TITLE
-# ==================================================
 
 st.title("🎵 Music Recommendation System")
 
@@ -115,9 +104,7 @@ audio features using K-Nearest Neighbors (KNN)
 and Cosine Similarity.
 """)
 
-# ==================================================
-# TABS
-# ==================================================
+
 
 tab1, tab2, tab3 = st.tabs([
     "🎵 Recommender",
@@ -125,9 +112,7 @@ tab1, tab2, tab3 = st.tabs([
     "👥 About Team"
 ])
 
-# ==================================================
-# TAB 1 - RECOMMENDER
-# ==================================================
+
 
 with tab1:
 
@@ -225,9 +210,7 @@ with tab1:
 
                 st.divider()
 
-# ==================================================
-# TAB 2 - DATASET & METHODOLOGY
-# ==================================================
+
 
 with tab2:
 
@@ -301,9 +284,6 @@ with tab2:
         df.head(10)
     )
 
-# ==================================================
-# TAB 3 - ABOUT TEAM
-# ==================================================
 
 with tab3:
 
