@@ -2,17 +2,11 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 
-# =========================
-# LOAD DATASET
-# =========================
 
 df = pd.read_csv("data.csv")
 
 print(f"Dataset loaded: {df.shape[0]} songs")
 
-# =========================
-# SELECT FEATURES
-# =========================
 
 features = [
     'danceability',
@@ -28,18 +22,13 @@ features = [
 
 X = df[features]
 
-# =========================
-# STANDARDIZE FEATURES
-# =========================
 
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
 print("Features standardized.")
 
-# =========================
-# TRAIN KNN MODEL
-# =========================
+
 
 model = NearestNeighbors(
     n_neighbors=11,
@@ -51,9 +40,7 @@ model.fit(X_scaled)
 
 print("KNN model trained.")
 
-# =========================
-# RECOMMENDATION FUNCTION
-# =========================
+
 
 def recommend(song_name, artist_name, top_n=10):
 
@@ -90,9 +77,6 @@ def recommend(song_name, artist_name, top_n=10):
             f"(Similarity: {similarity:.4f})"
         )
 
-# =========================
-# USER LOOP
-# =========================
 
 while True:
 
