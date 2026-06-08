@@ -1,90 +1,48 @@
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
+import pickle
 
+def load_train_and_save_pipeline():
+    df = pd.read_csv("data.csv")
+    
+    #clean
+    title_col = 'name' if 'name' in df.columns else 'title'
+    if title_col in df.columns and 'artists' in df.columns:
+        initial_shape = df.shape[0]
+        df = df.drop_duplicates(subset=[title_col, 'artists'], keep='first')
+        df = df.reset_index(drop=True)
+        print(f"Delete {initial_shape - df.shape[0]} Duplicates.")
 
-df = pd.read_csv("data.csv")
-
-print(f"Dataset loaded: {df.shape[0]} songs")
-
-
-features = [
-    'danceability',
-    'energy',
-    'acousticness',
-    'instrumentalness',
-    'liveness',
-    'speechiness',
-    'valence',
-    'loudness',
-    'tempo'
-]
-
-X = df[features]
-
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-print("Features standardized.")
-
-
-
-model = NearestNeighbors(
-    n_neighbors=11,
-    metric='cosine',
-    algorithm='brute'
-)
-
-model.fit(X_scaled)
-
-print("KNN model trained.")
-
-
-
-def recommend(song_name, artist_name, top_n=10):
-
-    matches = df[
-        (df['name'].str.lower() == song_name.lower()) &
-        (df['artists'].str.lower().str.contains(artist_name.lower()))
+    if 'artists' in df.columns and df['artists'].astype(str).str.startswith('[').any():
+        df['artists'] = df['artists'].astype(str).str.replace(r"\[|\]|'", "", regex=True)
+        
+    #scaling
+    features = [
+        'danceability', 'energy', 'acousticness', 'instrumentalness',
+        'liveness', 'speechiness', 'valence', 'loudness', 'tempo'
     ]
+    X = df[features]
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
-    if len(matches) == 0:
-        print("Song not found.")
-        return
-
-    idx = matches.index[0]
-
-    distances, indices = model.kneighbors(
-        X_scaled[idx].reshape(1, -1),
-        n_neighbors=top_n + 1
+    #train
+    model = NearestNeighbors(
+        n_neighbors=11,
+        metric='cosine',
+        algorithm='brute'
     )
+    model.fit(X_scaled)
 
-    print(f"\nRecommendations for:")
-    print(f"{df.iloc[idx]['name']} - {df.iloc[idx]['artists']}\n")
+    pipeline_data = {
+        'model': model,
+        'X_scaled': X_scaled,
+        'df': df
+    }
+    with open("music_recommender.pkl", "wb") as f:
+        pickle.dump(pipeline_data, f)
 
-    for rank, (distance, song_idx) in enumerate(
-        zip(distances[0][1:], indices[0][1:]),
-        start=1
-    ):
-
-        similarity = 1 - distance
-
-        print(
-            f"{rank}. "
-            f"{df.iloc[song_idx]['name']} - "
-            f"{df.iloc[song_idx]['artists']} "
-            f"(Similarity: {similarity:.4f})"
-        )
-
-
-while True:
-
-    song_name = input("\nSong title (or 'quit'): ")
-
-    if song_name.lower() == "quit":
-        break
-
-    artist_name = input("Artist: ")
-
-    recommend(song_name, artist_name)
+if __name__ == "__main__":
+    print("Start")
+    load_train_and_save_pipeline()
+    print("OK")    
