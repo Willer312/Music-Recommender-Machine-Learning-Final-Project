@@ -13,7 +13,6 @@ import random
 def load_pipeline():
     with open("music_recommender.pkl", "rb") as f:
         data = pickle.load(f)
-    # Mengambil objek yang disimpan oleh Train.py
     return data['model'], data['X_scaled'], data['df']
 
 model, X_scaled, df = load_pipeline()
@@ -77,12 +76,9 @@ custom_css = """
     --r2: 20px;
   }
 
-  /* Tighten top padding */
   .block-container { padding-top: 1.5rem; }
-  /* Style the fallback radio navbar */
   div[data-testid="stHorizontalBlock"] { gap: 0; }
 
-  /* Target Streamlit's main containers to inject your dark mode theme */
   .stApp {
     background-color: var(--bg) !important;
     color: var(--text) !important;
@@ -100,7 +96,6 @@ custom_css = """
     font-weight: 800;
   }
 
-  /* Cards from your HTML */
   .info-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--r2); padding: 1.5rem;
@@ -116,7 +111,6 @@ custom_css = """
   .icon-pink { background: rgba(240,98,146,0.15); }
   .icon-amber { background: rgba(245,166,35,0.15); }
 
-  /* Tags & Chips */
   .tag {
     padding: 5px 12px; display: inline-block;
     border-radius: 100px; font-size: 0.78rem; font-weight: 500;
@@ -125,7 +119,6 @@ custom_css = """
   }
   .tag.accent { border-color: rgba(124,106,245,0.35); color: var(--accent3); background: rgba(124,106,245,0.1); }
 
-  /* Recommendation Song Cards */
   .song-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--r); padding: 1.25rem;
@@ -150,7 +143,6 @@ custom_css = """
   .sim-track { width: 50px; height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
   .sim-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 2px; }
 
-  /* Features Pipeline Steps */
   .pipeline-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1rem; }
   .pipe-step-py {
     flex: 1; min-width: 160px; background: var(--surface);
@@ -160,7 +152,6 @@ custom_css = """
   .pipe-name { font-weight: 600; font-size: 0.875rem; margin-bottom: 4px; color: var(--text); }
   .pipe-desc { font-size: 0.75rem; color: var(--text2); }
 
-  /* Team Card Custom Styling */
   .team-card-py {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--r2); padding: 1.75rem; text-align: center;
@@ -174,9 +165,9 @@ custom_css = """
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
-# ─── 2. MENYIAPKAN PILIHAN DROPDOWN SECARA OTOMATIS DARI PKL ───
-df['dropdown_label'] = df['name'] + " — " + df['artists']
-song_options = df['dropdown_label'].sort_values().unique().tolist()
+# ─── 2. MENYIAPKAN TAMPILAN DROPDOWN SECARA DINAMIS (PENCEGAHAN LAG) ───
+if 'dropdown_label' not in df.columns:
+    df['dropdown_label'] = df['name'] + " — " + df['artists']
 
 
 # ─── 3. LOGIKA REKOMENDASI KNN BERDASARKAN DATA ASLI ───
@@ -258,51 +249,77 @@ if menu == "Discover":
         
     with col2:
         st.markdown('<div class="info-card"><h4>Search Song Database</h4>', unsafe_allow_html=True)
-        selected_search = st.selectbox(
-            "Type part of a song title or choose a Quick Pick...",
-            options=["Select a track..."] + song_options,
+        
+        # 1. KEMBALIKAN LOGIKA LAMA: Menggunakan Text Input terlebih dahulu sebagai filter keyword awal
+        search_keyword = st.text_input(
+            "🔍 Type song title...",
+            placeholder="Type part of a song title (e.g. 'Blinding Lights')...",
             label_visibility="collapsed"
         )
         
-        st.markdown("<p style='font-size:0.8rem; color:var(--text3); margin-top:-5px;'>Start typing to match songs from the dataset corpus.</p>", unsafe_allow_html=True)
+        selected_search = None
+        
+        # 2. Batasi item di dropdown selectbox secara dinamis berdasarkan keyword masukan (Maksimal 20 item)
+        if search_keyword:
+            matches = df[df["name"].str.contains(search_keyword, case=False, na=False)]
+            matches_limit = matches.head(20)
+            
+            if not matches_limit.empty:
+                selected_search = st.selectbox(
+                    "Matching results:",
+                    options=matches_limit["dropdown_label"].tolist()
+                )
+            else:
+                st.markdown("<p style='color:var(--pink); font-size:0.85rem; margin-top:5px;'>❌ No matching songs found. Try another title.</p>", unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='font-size:0.85rem; color:var(--text3); margin-top:5px;'>💡 Type a song title above to reveal the recommendation options.</p>", unsafe_allow_html=True)
+            
         get_recs = st.button("✨ Get Recommendations", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     
-    if get_recs and selected_search != "Select a track...":
-        track_name, track_artist = selected_search.split(" — ", 1)
-        st.markdown(f"### Recommendations Based On: <span style='color: var(--accent2);'>{track_name} ({track_artist})</span>", unsafe_allow_html=True)
+    # Eksekusi rekomendasi berdasarkan lagu yang berhasil difilter
+    if get_recs and selected_search:
+        # Menghindari splitting string secara manual demi keamanan karakter khusus/strip bawaan judul lagu
+        song_row = df[df['dropdown_label'] == selected_search]
         
-        with st.spinner(f"Searching {df.shape[0]:,} tracks via acoustic profiles..."):
-            recommendations = generate_recommendations_dinamis(selected_search, n_recs=10)
+        if not song_row.empty:
+            track_name = song_row.iloc[0]["name"]
+            track_artist = song_row.iloc[0]["artists"]
+            st.markdown(f"### Recommendations Based On: <span style='color: var(--accent2);'>{track_name} ({track_artist})</span>", unsafe_allow_html=True)
             
-            if recommendations:
-                r_col1, r_col2 = st.columns(2)
-                for i, rec in enumerate(recommendations):
-                    pct = int(rec["similarity"] * 100)
-                    card_html = f'''
-                    <div class="song-card">
-                      <div class="song-rank">{str(rec["rank"]).zfill(2)}</div>
-                      <div class="song-art">{rec["emoji"]}</div>
-                      <div class="song-info">
-                        <div class="song-name">{rec["name"]}</div>
-                        <div class="song-artist">{rec["artist"]}</div>
-                      </div>
-                      <div class="similarity-bar">
-                        <div class="sim-num">{pct}%</div>
-                        <div class="sim-track"><div class="sim-fill" style="width:{pct}%"></div></div>
-                      </div>
-                    </div>
-                    '''
-                    if i % 2 == 0:
-                        r_col1.markdown(card_html, unsafe_allow_html=True)
-                    else:
-                        r_col2.markdown(card_html, unsafe_allow_html=True)
-            else:
-                st.error("Gagal mengambil data rekomendasi dari model.")
+            with st.spinner(f"Searching {df.shape[0]:,} tracks via acoustic profiles..."):
+                recommendations = generate_recommendations_dinamis(selected_search, n_recs=10)
+                
+                if recommendations:
+                    r_col1, r_col2 = st.columns(2)
+                    for i, rec in enumerate(recommendations):
+                        pct = int(rec["similarity"] * 100)
+                        card_html = f'''
+                        <div class="song-card">
+                          <div class="song-rank">{str(rec["rank"]).zfill(2)}</div>
+                          <div class="song-art">{rec["emoji"]}</div>
+                          <div class="song-info">
+                            <div class="song-name">{rec["name"]}</div>
+                            <div class="song-artist">{rec["artist"]}</div>
+                          </div>
+                          <div class="similarity-bar">
+                            <div class="sim-num">{pct}%</div>
+                            <div class="sim-track"><div class="sim-fill" style="width:{pct}%"></div></div>
+                          </div>
+                        </div>
+                        '''
+                        if i % 2 == 0:
+                            r_col1.markdown(card_html, unsafe_allow_html=True)
+                        else:
+                            r_col2.markdown(card_html, unsafe_allow_html=True)
+                else:
+                    st.error("Gagal mengambil data rekomendasi dari model.")
+        else:
+            st.error("Track tidak ditemukan di database.")
     elif get_recs:
-        st.warning("Please choose or select a valid song from the search drop-down first!")
+        st.warning("Please type a valid song title and select it from the dropdown first!")
 
 
 # ════════════ 2. BACKGROUND SECTION ════════════
@@ -346,7 +363,7 @@ elif menu == "Model":
     with m_col1:  
         st.markdown('<div class="info-card"><h4>K-Nearest Neighbors (KNN)</h4><p style="color:var(--text2); font-size:0.85rem;">KNN is a non-parametric algorithm that finds the k closest data points to a query. We set <b>k = 11</b> (1 query song + 10 recommendations) and use brute-force search.</p><code style="color:var(--accent3)">n_neighbors=11, algorithm=\'brute\'</code></div>', unsafe_allow_html=True)
     with m_col2:
-        st.markdown('<div class="info-card"><h4>Cosine Similarity</h4><p style="color:var(--text2); font-size:0.85rem;">Rather than Euclidean distance, we use cosine similarity — which measures the angle between two feature vectors. Proportions matter over absolute scale.</p><code style="color:var(--accent3)">similarity = 1 − cosine_distance</code></div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-card"><h4>Cosine Similarity</h4><p style="color:var(--text2); font-size:0.85rem;">Rather than Euclidean distance, we use cosine similarity — which measures the angle between two feature vectors. Proportions matter over absolute scale.</p><code style="color:var(--accent3)">similarity = 1 - cosine_distance</code></div>', unsafe_allow_html=True)
 
     st.markdown("### Model Pipeline")
     st.markdown('''
@@ -360,40 +377,34 @@ elif menu == "Model":
     ''', unsafe_allow_html=True)
 
 
-# ════════════ 4. DATASET SECTION (INTEGRATED) ════════════
+# ════════════ 4. DATASET SECTION ════════════
 elif menu == "Dataset":
     st.header("Dataset Overview")
 
     st.write(f"""
     This project uses a Spotify dataset containing
-    **{len(df):,} songs** and {df.shape[1]} attributes.
+    **{len(df):,} songs** and {df.shape[1] - 1 if 'dropdown_label' in df.columns else df.shape[1]} attributes.
     """)
 
-    # Definisikan 9 fitur yang digunakan untuk training KNN
     FEATURES = ['danceability', 'energy', 'acousticness', 'instrumentalness', 'liveness', 'speechiness', 'valence', 'loudness', 'tempo']
 
-    # Tampilkan 9 Fitur yang Digunakan
     st.subheader("Features Used for Training")
     st.write("The model matches music profiles based on these 9 key acoustic vectors:")
     
-    # Menampilkan fitur dalam bentuk badge/tag aesthetic sesuai tema layout lu
     features_html = "".join([f'<span class="tag accent" style="font-size:0.9rem; padding:6px 16px; margin:4px;">{f}</span>' for f in FEATURES])
     st.markdown(f'<div style="margin-bottom:25px;">{features_html}</div>', unsafe_allow_html=True)
 
-    # Bersihkan DataFrame untuk display (buang kolom pembantu dropdown agar rapi)
     display_df = df.drop(columns=['dropdown_label'], errors='ignore')
 
-    #Tampilkan Ringkasan Statistik Fitur
     st.subheader("Feature Statistics Summary")
     st.dataframe(df[FEATURES].describe(), use_container_width=True)
 
-    # Tampilkan 10 Lagu Paling Atas (Head)
-    st.subheader("Dataset Sample: Top 10 & Bottom 10 Rows (Head)")
+    st.subheader("Dataset Sample: Top 10 Rows (Head)")
     st.dataframe(display_df.head(10), use_container_width=True)
 
-    # Tampilkan 10 Lagu Paling Bawah (Tail)
     st.subheader("Dataset Sample: Bottom 10 Rows (Tail)")
     st.dataframe(display_df.tail(10), use_container_width=True)
+
 
 # ════════════ 5. TEAMS SECTION ════════════
 elif menu == "Teams":
