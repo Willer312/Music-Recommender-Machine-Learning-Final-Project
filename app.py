@@ -16,6 +16,11 @@ def load_pipeline():
     return data['model'], data['X_scaled'], data['df']
 
 model, X_scaled, df = load_pipeline()
+def show_image_if_exists(path):
+    if os.path.exists(path):
+        st.image(path, use_container_width=True)
+    else:
+        st.warning(f"Missing image: {path}")
 
 # Helper function to convert local images to Base64
 def get_base64_img(img_name):
@@ -76,7 +81,11 @@ custom_css = """
     --r2: 20px;
   }
 
-  .block-container { padding-top: 1.5rem; }
+  .block-container {
+    padding-top: 3rem !important;
+    padding-bottom: 2rem;
+    max-width: 1400px;
+}
   div[data-testid="stHorizontalBlock"] { gap: 0; }
 
   .stApp {
@@ -92,9 +101,13 @@ custom_css = """
 
   .hero-gradient { 
     background: linear-gradient(135deg, #fff 0%, var(--accent3) 60%, var(--pink) 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     font-weight: 800;
-  }
+    line-height: 1.15;
+    display: inline-block;
+    padding-bottom: 0.2em;
+}
 
   .info-card {
     background: var(--surface); border: 1px solid var(--border);
@@ -160,6 +173,32 @@ custom_css = """
   .team-role { font-size: 0.78rem; color: var(--accent3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 0.75rem; }
   .team-desc { font-size: 0.82rem; color: var(--text2); line-height: 1.55; }
   .team-card-py img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid var(--accent); }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.metric-number {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--accent2);
+}
+
+.metric-label {
+    color: var(--text2);
+    font-size: 0.85rem;
+}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -356,25 +395,167 @@ elif menu == "Background":
 
 # ════════════ 3. MODEL SECTION ════════════
 elif menu == "Model":
-    st.markdown('<h3>How the model works</h3>', unsafe_allow_html=True)
-    st.markdown('<p style="color:var(--text2);">A K-Nearest Neighbors model with cosine similarity identifies the 10 most acoustically similar songs from a standardized 9-dimensional feature space.</p>', unsafe_allow_html=True)
-    
-    m_col1, m_col2 = st.columns(2)
-    with m_col1:  
-        st.markdown('<div class="info-card"><h4>K-Nearest Neighbors (KNN)</h4><p style="color:var(--text2); font-size:0.85rem;">KNN is a non-parametric algorithm that finds the k closest data points to a query. We set <b>k = 11</b> (1 query song + 10 recommendations) and use brute-force search.</p><code style="color:var(--accent3)">n_neighbors=11, algorithm=\'brute\'</code></div>', unsafe_allow_html=True)
-    with m_col2:
-        st.markdown('<div class="info-card"><h4>Cosine Similarity</h4><p style="color:var(--text2); font-size:0.85rem;">Rather than Euclidean distance, we use cosine similarity — which measures the angle between two feature vectors. Proportions matter over absolute scale.</p><code style="color:var(--accent3)">similarity = 1 - cosine_distance</code></div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<h2>Model Architecture & Evaluation</h2>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        '''
+        <p style="color:var(--text2);">
+        Algorhythm uses a K-Nearest Neighbors recommendation engine
+        with cosine similarity over standardized Spotify audio features.
+        </p>
+        ''',
+        unsafe_allow_html=True
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(
+            '''
+            <div class="info-card">
+                <h4>K-Nearest Neighbors (KNN)</h4>
+                <p style="color:var(--text2);">
+                KNN retrieves songs with the closest acoustic profiles.
+                </p>
+                <code>n_neighbors = 11</code>
+            </div>
+            ''',
+            unsafe_allow_html=True
+        )
+
+    with col2:
+        st.markdown(
+            '''
+            <div class="info-card">
+                <h4>Cosine Similarity</h4>
+                <p style="color:var(--text2);">
+                Similarity is measured using vector direction rather than magnitude.
+                </p>
+                <code>similarity = 1 - cosine_distance</code>
+            </div>
+            ''',
+            unsafe_allow_html=True
+        )
 
     st.markdown("### Model Pipeline")
+
     st.markdown('''
     <div class="pipeline-container">
-        <div class="pipe-step-py"><div class="pipe-num">Step 1</div><div class="pipe-name">Load Data</div><div class="pipe-desc">Read songs from pickle</div></div>
-        <div class="pipe-step-py"><div class="pipe-num">Step 2</div><div class="pipe-name">Standardize</div><div class="pipe-desc">StandardScaler: μ=0, σ=1</div></div>
-        <div class="pipe-step-py"><div class="pipe-num">Step 3</div><div class="pipe-name">Fit KNN</div><div class="pipe-desc">Build brute-force index</div></div>
-        <div class="pipe-step-py"><div class="pipe-num">Step 4</div><div class="pipe-name">Query</div><div class="pipe-desc">Retrieve nearest neighbors</div></div>
-        <div class="pipe-step-py"><div class="pipe-num">Step 5</div><div class="pipe-name">Rank & Return</div><div class="pipe-desc">Sort by similarity score</div></div>
+        <div class="pipe-step-py">
+            <div class="pipe-num">Step 1</div>
+            <div class="pipe-name">Load Data</div>
+            <div class="pipe-desc">Spotify Dataset</div>
+        </div>
+
+        <div class="pipe-step-py">
+            <div class="pipe-num">Step 2</div>
+            <div class="pipe-name">Feature Selection</div>
+            <div class="pipe-desc">9 Audio Features</div>
+        </div>
+
+        <div class="pipe-step-py">
+            <div class="pipe-num">Step 3</div>
+            <div class="pipe-name">StandardScaler</div>
+            <div class="pipe-desc">Normalize Feature Space</div>
+        </div>
+
+        <div class="pipe-step-py">
+            <div class="pipe-num">Step 4</div>
+            <div class="pipe-name">KNN Search</div>
+            <div class="pipe-desc">Cosine Similarity Lookup</div>
+        </div>
+
+        <div class="pipe-step-py">
+            <div class="pipe-num">Step 5</div>
+            <div class="pipe-name">Recommendation</div>
+            <div class="pipe-desc">Top 10 Similar Songs</div>
+        </div>
     </div>
     ''', unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    st.markdown("## Exploratory Data Analysis")
+
+    st.markdown(
+        '''
+        <p style="color:var(--text2);">
+        Distribution of the 9 Spotify audio features used for training.
+        </p>
+        ''',
+        unsafe_allow_html=True
+    )
+
+    show_image_if_exists("static/eda.png")
+
+    st.markdown("---")
+
+    st.markdown("## Correlation Heatmap")
+
+    st.markdown(
+        '''
+        <p style="color:var(--text2);">
+        Correlation matrix showing relationships between audio features.
+        </p>
+        ''',
+        unsafe_allow_html=True
+    )
+
+    show_image_if_exists("static/heatmap.png")
+
+    st.markdown("---")
+
+    st.markdown("## Recommendation Quality Evaluation")
+
+    st.markdown(
+        '''
+        <p style="color:var(--text2);">
+        Distribution of similarity scores produced by the recommendation engine.
+        Higher scores indicate stronger acoustic similarity.
+        </p>
+        ''',
+        unsafe_allow_html=True
+    )
+
+    show_image_if_exists("static/similarity_distribution.png")
+
+    st.markdown("---")
+
+    st.markdown("## Features Used By The Model")
+
+    feature_df = pd.DataFrame({
+        "Feature": [
+            "danceability",
+            "energy",
+            "acousticness",
+            "instrumentalness",
+            "liveness",
+            "speechiness",
+            "valence",
+            "loudness",
+            "tempo"
+        ],
+        "Description": [
+            "Rhythm suitability",
+            "Intensity level",
+            "Acoustic content",
+            "Instrumental content",
+            "Live performance likelihood",
+            "Speech content",
+            "Musical positivity",
+            "Volume intensity",
+            "Song speed"
+        ]
+    })
+
+    st.dataframe(
+        feature_df,
+        use_container_width=True
+    )
 
 
 # ════════════ 4. DATASET SECTION ════════════
