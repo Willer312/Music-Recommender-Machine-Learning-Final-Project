@@ -97,7 +97,9 @@ custom_css = """
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display) !important;
     color: var(--text) !important;
-  }
+    line-height: 1.25 !important;
+    padding-bottom: 0.2em;
+}
 
   .hero-gradient { 
     background: linear-gradient(135deg, #fff 0%, var(--accent3) 60%, var(--pink) 100%);
