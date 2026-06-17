@@ -35,7 +35,6 @@ def get_base64_img(img_name):
 img_william = get_base64_img("WillianYehezkiel.jpg")
 img_vittorio = get_base64_img("VittorioDinata.jpg")
 img_gilbert = get_base64_img("GregoriusGilbert.jpg")
-img_andrew = get_base64_img("AndrewOng.jpg")
 
 
 # Set up Streamlit page settings
@@ -639,7 +638,7 @@ elif menu == "Dataset":
 elif menu == "Teams":
     st.markdown('<h3>Meet the Team</h3>', unsafe_allow_html=True)
     st.markdown('<p style="color:var(--text2); margin-bottom:2rem;">The humans behind Algorhythm — bringing together machine learning, data engineering, and product design.</p>', unsafe_allow_html=True)
-    t_col1, t_col2, t_col3, t_col4 = st.columns(4)
+    t_col1, t_col2, t_col3, t_col4 = st.columns(3)
 
     with t_col1:
         st.markdown(f'''
@@ -668,15 +667,5 @@ elif menu == "Teams":
             <div class="team-name">G. Gilbert Susanto</div>
             <div class="team-role">Research Lead</div>
             <div class="team-desc">Documentation, literature review, and technical report writing on methodologies.</div>
-        </div>
-        ''', unsafe_allow_html=True)
-
-    with t_col4:
-        st.markdown(f'''
-        <div class="team-card-py">
-            <img src="data:image/jpeg;base64,{img_andrew}" alt="Andrew">
-            <div class="team-name">Andrew Ong</div>
-            <div class="team-role">Data Analyst</div>
-            <div class="team-desc">Dataset analysis, model evaluation validation, and project presentation materials.</div>
         </div>
         ''', unsafe_allow_html=True)
