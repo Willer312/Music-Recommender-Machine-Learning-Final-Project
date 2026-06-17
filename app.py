@@ -638,7 +638,7 @@ elif menu == "Dataset":
 elif menu == "Teams":
     st.markdown('<h3>Meet the Team</h3>', unsafe_allow_html=True)
     st.markdown('<p style="color:var(--text2); margin-bottom:2rem;">The humans behind Algorhythm — bringing together machine learning, data engineering, and product design.</p>', unsafe_allow_html=True)
-    t_col1, t_col2, t_col3, t_col4 = st.columns(3)
+    t_col1, t_col2, t_col3 = st.columns(3)
 
     with t_col1:
         st.markdown(f'''
