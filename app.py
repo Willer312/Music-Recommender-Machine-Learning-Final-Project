@@ -329,8 +329,18 @@ if menu == "Discover":
             track_artist = song_row.iloc[0]["artists"]
             st.markdown(f"### Recommendations Based On: <span style='color: var(--accent2);'>{track_name} ({track_artist})</span>", unsafe_allow_html=True)
             
+            import time
+
             with st.spinner(f"Searching {df.shape[0]:,} tracks via acoustic profiles..."):
-                recommendations = generate_recommendations_dinamis(selected_search, n_recs=10)
+
+                start = time.perf_counter()
+
+                recommendations = generate_recommendations_dinamis(
+                    selected_search,
+                    n_recs=10
+                )
+
+                latency = (time.perf_counter() - start) * 1000
                 
                 if recommendations:
                     r_col1, r_col2 = st.columns(2)
@@ -354,6 +364,7 @@ if menu == "Discover":
                             r_col1.markdown(card_html, unsafe_allow_html=True)
                         else:
                             r_col2.markdown(card_html, unsafe_allow_html=True)
+                    st.success(f"Recommendation latency: {latency:.2f} ms")
                 else:
                     st.error("Gagal mengambil data rekomendasi dari model.")
         else:
